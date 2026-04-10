@@ -1,6 +1,6 @@
 # pr-review-briefing
 
-A shell script that uses [Claude Code](https://www.anthropic.com/claude-code) and your Slack + GitHub MCP connections to scan a PR channel for unreviewed pull requests, analyse each diff, and DM you a private briefing — all from one command.
+A shell script that uses [Claude Code](https://www.anthropic.com/claude-code) and your Slack + GitHub MCP connections to scan a PR channel for unreviewed pull requests, analyse each diff, and DM you a private briefing, all from one command.
 
 ```
 🔍  PR Review Briefing
