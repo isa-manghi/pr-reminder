@@ -89,23 +89,33 @@ PROMPT="Using the Slack and GitHub MCP tools:
 2. For each PR, use GitHub MCP to check if it is still open and has no approving review. Skip PRs that are closed, already approved, or that I authored.
 3. For each unreviewed PR, fetch the diff and analyse it. Produce:
    - A 2-3 sentence plain English summary of what the PR does
-   - Risk areas worth scrutinising (auth, error handling, security, performance, DB migrations, etc.)
+   - Risk areas worth scrutinising (auth, error handling, security, performance, DB migrations, etc.) — keep each flag to a short phrase
    - 2-3 suggested inline review comments with filename and approximate line reference
-   - An overall signal: ✅ Looks good | 👀 Worth a closer look | 🚨 Needs discussion
-4. Use Slack MCP to send me a single DM (not to the PR channel) with the full briefing.${EMAIL_HINT} Format each PR like:
+   - An overall signal: one of exactly: ✅ Looks good | 👀 Worth a closer look | 🚨 Needs discussion
 
----
-*PR #<number> — \"<title>\"* by @<author>
-📋 <summary>
-⚠️ *Flags:* <risk areas, or 'None'>
-💬 *Suggested comments:*
-  • \`<file> ~L<line>\`: <comment>
-🏷️ <signal>
-🔗 <url>
----
+4. Use Slack MCP to send me a single DM (not to the PR channel).${EMAIL_HINT}
 
-If there are no unreviewed PRs, DM me: ✅ All clear — no unreviewed PRs right now.
-Be concise. Post nothing to the PR channel itself."
+Send the message using blocks for rich formatting. Structure it as follows:
+
+First, a header section:
+- A header block: '🔍  PR Review Briefing'
+- A context block showing the date and channel, e.g. 'Today · ${CHANNEL} · N of N unreviewed'
+- A divider
+
+Then for each unreviewed PR:
+- A section block with the PR title as bold mrkdwn: '*#<number> — <title>*'
+- A context block: 'by @<author> · opened <time ago>'
+- A section block for the 2-3 sentence summary
+- A section block labelled '*Flags*' listing each flag separated by ' · ', or 'None' if clean
+- A section block labelled '*Suggested comments*' with each comment on its own line as: \`<file> ~L<line>\`  <comment>
+- A section block with '*<signal>*' on one side and '<View on GitHub ↗|url>' link on the other using fields
+- A divider between each PR
+
+End with a context block: 'Checked ${CHANNEL} · <N> unreviewed · prism'
+
+If there are no unreviewed PRs, send a simple DM: '✅ All clear — no unreviewed PRs right now.'
+
+Be concise. Signal over noise. Post nothing to the PR channel itself."
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 gum spin \
