@@ -94,10 +94,10 @@ git clone https://github.com/your-username/pr-review-briefing
 cd pr-review-briefing
 
 # Make the script executable
-chmod +x review-prs.sh
+chmod +x pr-reminder.sh
 
 # Optionally move it onto your PATH
-mv review-prs.sh ~/.local/bin/review-prs
+mv pr-reminder.sh ~/.local/bin/pr-reminder
 ```
 
 ---
@@ -106,11 +106,11 @@ mv review-prs.sh ~/.local/bin/review-prs
 
 ```bash
 # Interactive — prompts for channel and email
-review-prs
+pr-reminder
 
 # Pass arguments directly to skip prompts
-review-prs "#eng-prs"
-review-prs "#eng-prs" "you@company.com"
+pr-reminder "#eng-prs"
+pr-reminder "#eng-prs" "you@company.com"
 ```
 
 The email argument helps Claude look up your Slack user ID to send the DM. If your Slack workspace can resolve your identity from context alone you can leave it out.
