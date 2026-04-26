@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# review-prs.sh — prism
+# pr-reminder.sh
 # Interactive PR review briefing using gum + Claude Code or Copilot CLI + MCP
 #
 # Dependencies:
@@ -52,11 +52,10 @@ gum style \
   --padding "1 4" \
   --margin "1 0" \
   --bold \
-  "🔍  prism · PR Review Briefing"
+  "🔍  pr-reminder · PR Review Briefing"
 
 # ── Choose AI tool ────────────────────────────────────────────────────────────
 if $HAS_CLAUDE && $HAS_COPILOT; then
-  # Both installed — prompt the user to choose
   AI_TOOL=$(gum choose \
     --header "Which AI would you like to use?" \
     --header.foreground "$PURPLE" \
@@ -141,18 +140,43 @@ Then for each unreviewed PR:
 - A section block with '*<signal>*' on one side and a link on the other: 'View on GitHub ↗'
 - A divider between each PR
 
-End with a context block: 'Checked ${CHANNEL} · <N> unreviewed · prism'
+End with a context block: 'Checked ${CHANNEL} · <N> unreviewed · pr-reminder'
 
 If there are no unreviewed PRs, send a simple DM: '✅ All clear — no unreviewed PRs right now.'
 
 Be concise. Signal over noise. Post nothing to the PR channel itself."
 
 # ── Run with the chosen tool ──────────────────────────────────────────────────
+#
+# Security notes:
+#
+# Claude Code  — uses --permission-mode acceptEdits (auto mode) instead of
+#                --dangerously-skip-permissions. The safety classifier stays
+#                active and blocks genuinely risky actions. Only MCP tool calls
+#                and read operations are expected; no file writes or shell
+#                commands should be needed for this task.
+#
+# Copilot CLI  — uses scoped --allow-tool flags to permit only the two MCP
+#                servers this task needs (slack and github). All shell
+#                execution, file writes, and other tools remain blocked.
+#                --deny-tool shell provides an explicit hard block on shell
+#                commands as a belt-and-braces measure.
+#
 if [[ "$AI_TOOL" == "Claude Code" ]]; then
-  RUN_CMD="claude --dangerously-skip-permissions -p \"$PROMPT\""
+  RUN_CMD=(
+    claude
+    --permission-mode acceptEdits
+    -p "$PROMPT"
+  )
   SPINNER_TITLE="Claude is checking PRs in ${CHANNEL}..."
 else
-  RUN_CMD="copilot --allow-all-tools -p \"$PROMPT\""
+  RUN_CMD=(
+    copilot
+    --allow-tool "slack"
+    --allow-tool "github"
+    --deny-tool "shell"
+    -p "$PROMPT"
+  )
   SPINNER_TITLE="Copilot is checking PRs in ${CHANNEL}..."
 fi
 
@@ -161,7 +185,7 @@ gum spin \
   --spinner.foreground "$PINK" \
   --title "$SPINNER_TITLE" \
   --title.foreground "$PURPLE" \
-  -- bash -c "$RUN_CMD"
+  -- "${RUN_CMD[@]}"
 
 EXIT_CODE=$?
 echo ""
