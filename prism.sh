@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# review-prs.sh
-# Interactive PR review briefing using gum + Claude Code + MCP (Slack & GitHub)
-# No skill file required — prompt is inline.
+# review-prs.sh — prism
+# Interactive PR review briefing using gum + Claude Code or Copilot CLI + MCP
 #
 # Dependencies:
 #   - gum     (brew install gum)
-#   - claude  (npm install -g @anthropic-ai/claude-code)
+#   - claude  (npm install -g @anthropic-ai/claude-code)     — for Claude Code
+#   - copilot (npm install -g @github/copilot)               — for Copilot CLI
 #
-# MCP servers required in ~/.claude/settings.json:
-#   - Slack MCP   (github.com/modelcontextprotocol/servers/slack)
-#   - GitHub MCP  (github.com/modelcontextprotocol/servers/github)
+# MCP config:
+#   Claude Code : ~/.claude/settings.json
+#   Copilot CLI : ~/.copilot/mcp-config.json
+#   Both need Slack + GitHub MCP servers configured.
 
 set -euo pipefail
 
@@ -26,8 +27,20 @@ if ! command -v gum &>/dev/null; then
   exit 1
 fi
 
-if ! command -v claude &>/dev/null; then
-  echo "Claude Code is not installed. Run: npm install -g @anthropic-ai/claude-code"
+HAS_CLAUDE=false
+HAS_COPILOT=false
+command -v claude &>/dev/null && HAS_CLAUDE=true
+command -v copilot &>/dev/null && HAS_COPILOT=true
+
+if ! $HAS_CLAUDE && ! $HAS_COPILOT; then
+  gum style \
+    --foreground "$RED" \
+    --border rounded \
+    --border-foreground "$RED" \
+    --padding "0 2" \
+    "Neither Claude Code nor Copilot CLI is installed." \
+    "  Claude Code : npm install -g @anthropic-ai/claude-code" \
+    "  Copilot CLI : npm install -g @github/copilot"
   exit 1
 fi
 
@@ -39,7 +52,24 @@ gum style \
   --padding "1 4" \
   --margin "1 0" \
   --bold \
-  "🔍  PR Review Briefing"
+  "🔍  prism · PR Review Briefing"
+
+# ── Choose AI tool ────────────────────────────────────────────────────────────
+if $HAS_CLAUDE && $HAS_COPILOT; then
+  # Both installed — prompt the user to choose
+  AI_TOOL=$(gum choose \
+    --header "Which AI would you like to use?" \
+    --header.foreground "$PURPLE" \
+    --selected.foreground "$PINK" \
+    "Claude Code" \
+    "GitHub Copilot CLI")
+elif $HAS_CLAUDE; then
+  AI_TOOL="Claude Code"
+else
+  AI_TOOL="GitHub Copilot CLI"
+fi
+
+gum style --foreground "$GRAY" "  Using    : $AI_TOOL"
 
 # ── Inputs ────────────────────────────────────────────────────────────────────
 if [[ $# -ge 1 ]]; then
@@ -65,8 +95,8 @@ fi
 
 # ── Confirm ───────────────────────────────────────────────────────────────────
 echo ""
-gum style --foreground "$GRAY" "  Channel : $CHANNEL"
-[[ -n "$EMAIL" ]] && gum style --foreground "$GRAY" "  Email   : $EMAIL"
+gum style --foreground "$GRAY" "  Channel  : $CHANNEL"
+[[ -n "$EMAIL" ]] && gum style --foreground "$GRAY" "  Email    : $EMAIL"
 echo ""
 
 if ! gum confirm \
@@ -108,7 +138,7 @@ Then for each unreviewed PR:
 - A section block for the 2-3 sentence summary
 - A section block labelled '*Flags*' listing each flag separated by ' · ', or 'None' if clean
 - A section block labelled '*Suggested comments*' with each comment on its own line as: \`<file> ~L<line>\`  <comment>
-- A section block with '*<signal>*' on one side and '<View on GitHub ↗|url>' link on the other using fields
+- A section block with '*<signal>*' on one side and a link on the other: 'View on GitHub ↗'
 - A divider between each PR
 
 End with a context block: 'Checked ${CHANNEL} · <N> unreviewed · prism'
@@ -117,13 +147,21 @@ If there are no unreviewed PRs, send a simple DM: '✅ All clear — no unreview
 
 Be concise. Signal over noise. Post nothing to the PR channel itself."
 
-# ── Run ───────────────────────────────────────────────────────────────────────
+# ── Run with the chosen tool ──────────────────────────────────────────────────
+if [[ "$AI_TOOL" == "Claude Code" ]]; then
+  RUN_CMD="claude --dangerously-skip-permissions -p \"$PROMPT\""
+  SPINNER_TITLE="Claude is checking PRs in ${CHANNEL}..."
+else
+  RUN_CMD="copilot --allow-all-tools -p \"$PROMPT\""
+  SPINNER_TITLE="Copilot is checking PRs in ${CHANNEL}..."
+fi
+
 gum spin \
   --spinner dot \
   --spinner.foreground "$PINK" \
-  --title "Checking PRs in ${CHANNEL}..." \
+  --title "$SPINNER_TITLE" \
   --title.foreground "$PURPLE" \
-  -- claude --dangerously-skip-permissions -p "$PROMPT"
+  -- bash -c "$RUN_CMD"
 
 EXIT_CODE=$?
 echo ""
